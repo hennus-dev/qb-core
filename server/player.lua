@@ -318,7 +318,19 @@ function QBCore.Player.CreatePlayer(PlayerData, Offline)
         amount = tonumber(amount)
         if amount < 0 then return end
         if not self.PlayerData.money[moneytype] then return false end
-        self.PlayerData.money[moneytype] = self.PlayerData.money[moneytype] + amount
+        if GetResourceState('pefcl') ~= 'missing' then
+            if moneytype == 'bank' then
+                local data = {}
+                data.amount = amount
+                data.message = reason
+                exports.pefcl:addBankBalance(self.PlayerData.source, data)
+            else
+                if not self.PlayerData.money[moneytype] then return false end
+                self.PlayerData.money[moneytype] = self.PlayerData.money[moneytype] + amount
+            end
+        else 
+            self.PlayerData.money[moneytype] = self.PlayerData.money[moneytype] + amount
+        end
 
         if not self.Offline then
             self.Functions.UpdatePlayerData()
@@ -348,7 +360,18 @@ function QBCore.Player.CreatePlayer(PlayerData, Offline)
                 end
             end
         end
-        self.PlayerData.money[moneytype] = self.PlayerData.money[moneytype] - amount
+        if GetResourceState('pefcl') ~= 'missing' then
+            if moneytype == 'bank' then
+                local data = {}
+                data.amount = amount
+                data.message = reason
+                exports.pefcl:removeBankBalance(self.PlayerData.source, data)
+            else
+                self.PlayerData.money[moneytype] = self.PlayerData.money[moneytype] - amount
+            end
+        else
+            self.PlayerData.money[moneytype] = self.PlayerData.money[moneytype] - amount
+        end
 
         if not self.Offline then
             self.Functions.UpdatePlayerData()
@@ -373,9 +396,23 @@ function QBCore.Player.CreatePlayer(PlayerData, Offline)
         moneytype = moneytype:lower()
         amount = tonumber(amount)
         if amount < 0 then return false end
-        if not self.PlayerData.money[moneytype] then return false end
-        local difference = amount - self.PlayerData.money[moneytype]
-        self.PlayerData.money[moneytype] = amount
+        if GetResourceState('pefcl') ~= 'missing' then
+            if moneytype == 'bank' then
+                local data = {}
+                data.amount = amount
+                exports.pefcl:setBankBalance(self.PlayerData.source, data)
+                self.PlayerData.money[moneytype] = exports.pefcl:getDefaultAccountBalance(self.PlayerData.source).data or 0
+                local difference = amount - self.PlayerData.money[moneytype]
+            else
+                if not self.PlayerData.money[moneytype] then return false end
+                local difference = amount - self.PlayerData.money[moneytype]
+                self.PlayerData.money[moneytype] = amount
+            end
+        else
+            if not self.PlayerData.money[moneytype] then return false end
+            local difference = amount - self.PlayerData.money[moneytype]
+            self.PlayerData.money[moneytype] = amount
+        end
 
         if not self.Offline then
             self.Functions.UpdatePlayerData()
@@ -391,7 +428,23 @@ function QBCore.Player.CreatePlayer(PlayerData, Offline)
     function self.Functions.GetMoney(moneytype)
         if not moneytype then return false end
         moneytype = moneytype:lower()
+        if GetResourceState('pefcl') ~= 'missing' then
+            if moneytype == 'bank' then
+                self.PlayerData.money[moneytype] = exports.pefcl:getDefaultAccountBalance(self.PlayerData.source).data or 0
+                return exports.pefcl:getDefaultAccountBalance(self.PlayerData.source).data
+            end
+        end
         return self.PlayerData.money[moneytype]
+    end
+
+    function self.Functions.SyncMoney() 
+        local money = exports.pefcl:getDefaultAccountBalance(self.PlayerData.source).data
+        if money then
+            self.PlayerData.money['bank'] = money
+        end
+        if not self.Offline then
+            self.Functions.UpdatePlayerData()
+        end
     end
 
     function self.Functions.SetCreditCard(cardNumber)
