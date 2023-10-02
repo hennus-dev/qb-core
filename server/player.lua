@@ -437,13 +437,15 @@ function QBCore.Player.CreatePlayer(PlayerData, Offline)
         return self.PlayerData.money[moneytype]
     end
 
-    function self.Functions.SyncMoney() 
-        local money = exports.pefcl:getDefaultAccountBalance(self.PlayerData.source).data
-        if money then
-            self.PlayerData.money['bank'] = money
-        end
-        if not self.Offline then
-            self.Functions.UpdatePlayerData()
+    if GetResourceState('pefcl') ~= 'missing' then
+        function self.Functions.SyncMoney() 
+            local money = exports.pefcl:getDefaultAccountBalance(self.PlayerData.source).data
+            if money then
+                self.PlayerData.money['bank'] = money
+            end
+            if not self.Offline then
+                self.Functions.UpdatePlayerData()
+            end
         end
     end
 
